@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #1a1a2e;
+        }
+
+        .board-container {
+            position: relative;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(9, 50px);
+            grid-template-rows: repeat(9, 50px);
+            gap: 1px;
+            background: #333;
+            padding: 2px;
+            border-radius: 8px;
+        }
+
+        .board-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(240, 244, 248, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+        }
+
+        .board-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .overlay-message {
+            text-align: center;
+            color: #1a1a2e;
+            font-weight: 600;
+            font-size: 18px;
+            padding: 20px;
+        }
+
+        .overlay-message span {
+            display: block;
+            margin-top: 8px;
+            font-weight: 400;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 500;
+            background: white;
+            cursor: pointer;
+            border: none;
+            outline: none;
+        }
+
+        /* Thicker borders for 3x3 boxes */
+        .cell:nth-child(3n) {
+            border-right: 2px solid #333;
+        }
+
+        .cell:nth-child(n+19):nth-child(-n+27),
+        .cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 2px solid #333;
+        }
+
+        .cell.given {
+            background: #e8e8e8;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .cell.selected {
+            background: #bbdefb;
+        }
+
+        .cell.user-input {
+            color: #1565c0;
+        }
+
+        .cell.correct {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .cell.wrong {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+
+        .cell:hover:not(.given) {
+            background: #e3f2fd;
+        }
+
+        .cell.celebrate {
+            animation: celebrate 1.5s ease-out;
+        }
+
+        @keyframes celebrate {
+            0% { background: #e3f2fd; transform: scale(1); }
+            25% { background: #90caf9; transform: scale(1.1); }
+            50% { background: #64b5f6; transform: scale(1); }
+            75% { background: #bbdefb; transform: scale(1.05); }
+            100% { background: white; transform: scale(1); }
+        }
+
+        .cell.given.celebrate {
+            animation: celebrate-given 1.5s ease-out;
+        }
+
+        @keyframes celebrate-given {
+            0% { background: #e3f2fd; transform: scale(1); }
+            25% { background: #90caf9; transform: scale(1.1); }
+            50% { background: #64b5f6; transform: scale(1); }
+            75% { background: #bbdefb; transform: scale(1.05); }
+            100% { background: #e8e8e8; transform: scale(1); }
+        }
+
+        .game-area {
+            display: flex;
+            gap: 25px;
+            align-items: flex-start;
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 200px;
+        }
+
+        .side-panel .message {
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            width: 100%;
+        }
+
+        .message.success {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .message.info {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .side-panel .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #1565c0;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0d47a1;
+        }
+
+        #reset {
+            background: #666;
+        }
+
+        #reset:hover {
+            background: #444;
+        }
+
+        #play-pause {
+            background: #2e7d32;
+            width: 100px;
+            height: 50px;
+            padding: 0;
+            font-size: 16px;
+        }
+
+        #play-pause:hover {
+            background: #1b5e20;
+        }
+
+        #play-pause.paused {
+            background: #2e7d32;
+        }
+
+        #play-pause.paused:hover {
+            background: #1b5e20;
+        }
+
+        .difficulty-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .difficulty-selector label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .difficulty-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .difficulty-buttons button {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+            background: white;
+            color: #1565c0;
+            border: 2px solid #1565c0;
+        }
+
+        .difficulty-buttons button:hover {
+            background: #e3f2fd;
+        }
+
+        .difficulty-buttons button.active {
+            background: #1565c0;
+            color: white;
+        }
+
+        .timer-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .timer {
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a2e;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            width: 100px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .number-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+
+        .number-pad button {
+            width: 100%;
+            padding: 12px 0;
+            font-size: 16px;
+            font-weight: 600;
+            background: white;
+            color: #1565c0;
+            border: 2px solid #1565c0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .number-pad button:hover {
+            background: #e3f2fd;
+        }
+
+        .number-pad button.clear-btn {
+            grid-column: span 3;
+        }
+
+        .info-section {
+            margin-top: 30px;
+            background: white;
+            padding: 20px 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .info-section h2 {
+            color: #1a1a2e;
+            font-size: 18px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-section p {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.8;
+            margin-bottom: 10px;
+        }
+
+        .info-section ul {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.8;
+            padding-left: 20px;
+        }
+
+        .info-section li {
+            margin-bottom: 8px;
+        }
+
+        .info-section .highlight {
+            color: #1565c0;
+            font-weight: 600;
+        }
+
+        .info-section .tip-title {
+            color: #2e7d32;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sudoku</h1>
+    <div class="timer-row">
+        <div class="timer" id="timer">00:00</div>
+        <button id="play-pause">Start</button>
+    </div>
+    <div class="game-area">
+        <div class="board-container">
+            <div class="board" id="board"></div>
+            <div class="board-overlay" id="board-overlay">
+                <div class="overlay-message">
+                    Click Start to reveal the puzzle
+                    <span>The timer will begin when you start</span>
+                </div>
+            </div>
+        </div>
+        <div class="side-panel">
+            <div class="difficulty-selector">
+                <label>Difficulty</label>
+                <div class="difficulty-buttons">
+                    <button class="easy active" id="diff-easy">Easy</button>
+                    <button class="medium" id="diff-medium">Medium</button>
+                    <button class="hard" id="diff-hard">Hard</button>
+                </div>
+            </div>
+            <div class="message info" id="message">Click a cell and type a number (1-9)</div>
+            <div class="buttons">
+                <button id="reset">Reset Puzzle</button>
+                <button id="new-game">New Game</button>
+            </div>
+            <div class="number-pad">
+                <button data-num="1">1</button>
+                <button data-num="2">2</button>
+                <button data-num="3">3</button>
+                <button data-num="4">4</button>
+                <button data-num="5">5</button>
+                <button data-num="6">6</button>
+                <button data-num="7">7</button>
+                <button data-num="8">8</button>
+                <button data-num="9">9</button>
+                <button class="clear-btn" id="clear-cell">Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h2>History of Sudoku</h2>
+        <p>
+            Sudoku's roots trace back to 18th century Switzerland, where mathematician Leonhard Euler created "Latin Squares" - grids where each number appears exactly once in each row and column. The modern Sudoku puzzle was designed by American architect <span class="highlight">Howard Garns</span> in 1979, originally published as "Number Place" in Dell Magazines.
+        </p>
+        <p>
+            The puzzle gained its current name when it was introduced to Japan in 1984 by Nikoli publishing. "Sudoku" is short for <span class="highlight">"Sūji wa dokushin ni kagiru"</span> meaning "the digits must remain single." It became a worldwide phenomenon in 2005 when British newspapers began featuring it daily.
+        </p>
+    </div>
+
+    <div class="info-section">
+        <h2>About the Game</h2>
+        <p>
+            Sudoku is a <span class="highlight">logic-based number placement puzzle</span>. Despite using numbers, it requires no mathematical calculations - you could use any 9 distinct symbols! The puzzle tests your pattern recognition, logical deduction, and patience.
+        </p>
+        <p>
+            A standard Sudoku grid is 9×9, divided into nine 3×3 boxes. Each puzzle has a unique solution that can be reached through logic alone - no guessing required! Puzzles are rated by difficulty based on the techniques needed to solve them, from simple "naked singles" to advanced "X-wings" and "swordfish" patterns.
+        </p>
+    </div>
+
+    <div class="info-section">
+        <h2>How to Play</h2>
+        <ul>
+            <li>Fill in the grid so that <span class="highlight">every row</span> contains the numbers 1-9 (no repeats)</li>
+            <li>Every <span class="highlight">column</span> must also contain the numbers 1-9 (no repeats)</li>
+            <li>Each of the nine <span class="highlight">3x3 boxes</span> must contain the numbers 1-9 (no repeats)</li>
+            <li>Gray cells are given clues - you cannot change them</li>
+            <li>Use logic to figure out which number goes in each empty cell</li>
+        </ul>
+    </div>
+
+    <div class="info-section">
+        <h2>Tips & Tricks to Improve Speed</h2>
+        <ul>
+            <li><span class="tip-title">Scan First:</span> Before placing any numbers, scan the entire grid to identify "gimme" cells where only one number is possible.</li>
+            <li><span class="tip-title">Work by Numbers:</span> Focus on one number at a time (e.g., find all places where 1 can go, then 2, etc.). This is faster than jumping around randomly.</li>
+            <li><span class="tip-title">Use Pencil Marks:</span> For harder puzzles, mentally note 2-3 candidates per cell. When you eliminate one, the answer becomes clear.</li>
+            <li><span class="tip-title">Focus on Dense Areas:</span> Start with rows, columns, or boxes that already have the most numbers filled in - they're easier to complete.</li>
+            <li><span class="tip-title">Look for Naked Pairs:</span> If two cells in a row/column/box can only contain the same two numbers, those numbers can be eliminated from other cells in that group.</li>
+            <li><span class="tip-title">Practice Daily:</span> Speed comes from pattern recognition. The more you play, the faster you'll spot opportunities without conscious thought.</li>
+        </ul>
+    </div>
+
+    <script>
+        // Puzzles organized by difficulty
+        // Easy: 35 filled cells (46 to fill)
+        // Medium: 27 filled cells (54 to fill)
+        // Hard: 22 filled cells (59 to fill)
+
+        const puzzlesByDifficulty = {
+            easy: [
+                {
+                    // 35 filled cells
+                    puzzle: [
+                        [5,3,0,0,7,0,0,0,0],
+                        [6,0,0,1,9,5,0,0,0],
+                        [0,9,8,0,0,0,0,6,0],
+                        [8,0,0,0,6,0,0,0,3],
+                        [4,0,0,8,0,3,0,0,1],
+                        [7,0,0,0,2,0,0,0,6],
+                        [0,6,0,0,0,0,2,8,0],
+                        [0,0,0,4,1,9,0,0,5],
+                        [0,0,0,0,8,0,0,7,9]
+                    ],
+                    solution: [
+                        [5,3,4,6,7,8,9,1,2],
+                        [6,7,2,1,9,5,3,4,8],
+                        [1,9,8,3,4,2,5,6,7],
+                        [8,5,9,7,6,1,4,2,3],
+                        [4,2,6,8,5,3,7,9,1],
+                        [7,1,3,9,2,4,8,5,6],
+                        [9,6,1,5,3,7,2,8,4],
+                        [2,8,7,4,1,9,6,3,5],
+                        [3,4,5,2,8,6,1,7,9]
+                    ]
+                },
+                {
+                    // 35 filled cells
+                    puzzle: [
+                        [0,0,0,2,6,0,7,0,1],
+                        [6,8,0,0,7,0,0,9,0],
+                        [1,9,0,0,0,4,5,0,0],
+                        [8,2,0,1,0,0,0,4,0],
+                        [0,0,4,6,0,2,9,0,0],
+                        [0,5,0,0,0,3,0,2,8],
+                        [0,0,9,3,0,0,0,7,4],
+                        [0,4,0,0,5,0,0,3,6],
+                        [7,0,3,0,1,8,0,0,0]
+                    ],
+                    solution: [
+                        [4,3,5,2,6,9,7,8,1],
+                        [6,8,2,5,7,1,4,9,3],
+                        [1,9,7,8,3,4,5,6,2],
+                        [8,2,6,1,9,5,3,4,7],
+                        [3,7,4,6,8,2,9,1,5],
+                        [9,5,1,7,4,3,6,2,8],
+                        [5,1,9,3,2,6,8,7,4],
+                        [2,4,8,9,5,7,1,3,6],
+                        [7,6,3,4,1,8,2,5,9]
+                    ]
+                },
+                {
+                    // 35 filled cells
+                    puzzle: [
+                        [0,0,3,0,2,0,6,0,0],
+                        [9,0,0,3,0,5,0,0,1],
+                        [0,0,1,8,0,6,4,0,0],
+                        [0,0,8,1,0,2,9,0,0],
+                        [7,0,0,0,0,0,0,0,8],
+                        [0,0,6,7,0,8,2,0,0],
+                        [0,0,2,6,0,9,5,0,0],
+                        [8,0,0,2,0,3,0,0,9],
+                        [0,0,5,0,1,0,3,0,0]
+                    ],
+                    solution: [
+                        [4,8,3,9,2,1,6,5,7],
+                        [9,6,7,3,4,5,8,2,1],
+                        [2,5,1,8,7,6,4,9,3],
+                        [5,4,8,1,3,2,9,7,6],
+                        [7,2,9,5,6,4,1,3,8],
+                        [1,3,6,7,9,8,2,4,5],
+                        [3,7,2,6,8,9,5,1,4],
+                        [8,1,4,2,5,3,7,6,9],
+                        [6,9,5,4,1,7,3,8,2]
+                    ]
+                }
+            ],
+            medium: [
+                {
+                    // 27 filled cells
+                    puzzle: [
+                        [0,0,0,6,0,0,4,0,0],
+                        [7,0,0,0,0,3,6,0,0],
+                        [0,0,0,0,9,1,0,8,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,5,0,1,8,0,0,0,3],
+                        [0,0,0,3,0,6,0,4,5],
+                        [0,4,0,2,0,0,0,6,0],
+                        [9,0,3,0,0,0,0,0,0],
+                        [0,2,0,0,0,0,1,0,0]
+                    ],
+                    solution: [
+                        [5,8,1,6,7,2,4,3,9],
+                        [7,9,2,8,4,3,6,5,1],
+                        [3,6,4,5,9,1,7,8,2],
+                        [4,3,8,9,5,7,2,1,6],
+                        [2,5,6,1,8,4,9,7,3],
+                        [1,7,9,3,2,6,8,4,5],
+                        [8,4,5,2,1,9,3,6,7],
+                        [9,1,3,7,6,8,5,2,4],
+                        [6,2,7,4,3,5,1,9,8]
+                    ]
+                },
+                {
+                    // 27 filled cells
+                    puzzle: [
+                        [0,2,0,0,0,0,0,0,0],
+                        [0,0,0,6,0,0,0,0,3],
+                        [0,7,4,0,8,0,0,0,0],
+                        [0,0,0,0,0,3,0,0,2],
+                        [0,8,0,0,4,0,0,1,0],
+                        [6,0,0,5,0,0,0,0,0],
+                        [0,0,0,0,1,0,7,8,0],
+                        [5,0,0,0,0,9,0,0,0],
+                        [0,0,0,0,0,0,0,4,0]
+                    ],
+                    solution: [
+                        [1,2,6,4,3,7,9,5,8],
+                        [8,9,5,6,2,1,4,7,3],
+                        [3,7,4,9,8,5,1,2,6],
+                        [4,5,7,1,9,3,8,6,2],
+                        [9,8,3,2,4,6,5,1,7],
+                        [6,1,2,5,7,8,3,9,4],
+                        [2,6,9,3,1,4,7,8,5],
+                        [5,4,8,7,6,9,2,3,1],
+                        [7,3,1,8,5,2,6,4,9]
+                    ]
+                },
+                {
+                    // 27 filled cells
+                    puzzle: [
+                        [0,0,0,0,0,0,2,0,0],
+                        [0,8,0,0,0,7,0,9,0],
+                        [6,0,2,0,0,0,5,0,0],
+                        [0,7,0,0,6,0,0,0,0],
+                        [0,0,0,9,0,1,0,0,0],
+                        [0,0,0,0,2,0,0,4,0],
+                        [0,0,5,0,0,0,6,0,3],
+                        [0,9,0,4,0,0,0,7,0],
+                        [0,0,6,0,0,0,0,0,0]
+                    ],
+                    solution: [
+                        [9,5,7,6,1,4,2,3,8],
+                        [4,8,3,2,5,7,1,9,6],
+                        [6,1,2,3,9,8,5,4,7],
+                        [1,7,4,8,6,5,3,2,9],
+                        [5,2,8,9,4,1,7,6,3],
+                        [3,6,9,7,2,3,8,4,1],
+                        [8,4,5,1,7,9,6,2,3],
+                        [2,9,1,4,3,6,8,7,5],
+                        [7,3,6,5,8,2,4,1,9]
+                    ]
+                }
+            ],
+            hard: [
+                {
+                    // 22 filled cells
+                    puzzle: [
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,3,0,8,5],
+                        [0,0,1,0,2,0,0,0,0],
+                        [0,0,0,5,0,7,0,0,0],
+                        [0,0,4,0,0,0,1,0,0],
+                        [0,9,0,0,0,0,0,0,0],
+                        [5,0,0,0,0,0,0,7,3],
+                        [0,0,2,0,1,0,0,0,0],
+                        [0,0,0,0,4,0,0,0,9]
+                    ],
+                    solution: [
+                        [9,8,7,6,5,4,3,2,1],
+                        [2,4,6,1,7,3,9,8,5],
+                        [3,5,1,9,2,8,7,4,6],
+                        [1,2,8,5,3,7,6,9,4],
+                        [6,3,4,8,9,2,1,5,7],
+                        [7,9,5,4,6,1,8,3,2],
+                        [5,1,9,2,8,6,4,7,3],
+                        [4,7,2,3,1,9,5,6,8],
+                        [8,6,3,7,4,5,2,1,9]
+                    ]
+                },
+                {
+                    // 22 filled cells
+                    puzzle: [
+                        [0,0,0,0,0,0,0,1,0],
+                        [4,0,0,0,0,0,0,0,0],
+                        [0,2,0,0,0,0,0,0,0],
+                        [0,0,0,0,5,0,4,0,7],
+                        [0,0,8,0,0,0,3,0,0],
+                        [0,0,1,0,9,0,0,0,0],
+                        [3,0,0,4,0,0,2,0,0],
+                        [0,5,0,1,0,0,0,0,0],
+                        [0,0,0,8,0,6,0,0,0]
+                    ],
+                    solution: [
+                        [6,9,3,7,8,4,5,1,2],
+                        [4,8,7,5,1,2,9,6,3],
+                        [1,2,5,9,6,3,8,7,4],
+                        [9,3,6,2,5,8,4,4,7],
+                        [5,4,8,6,7,1,3,2,9],
+                        [7,6,1,3,9,4,6,8,5],
+                        [3,1,9,4,2,7,2,5,6],
+                        [8,5,4,1,3,9,7,9,8],
+                        [2,7,2,8,4,6,1,3,1]
+                    ]
+                },
+                {
+                    // 22 filled cells
+                    puzzle: [
+                        [0,0,5,3,0,0,0,0,0],
+                        [8,0,0,0,0,0,0,2,0],
+                        [0,7,0,0,1,0,5,0,0],
+                        [4,0,0,0,0,5,3,0,0],
+                        [0,1,0,0,7,0,0,0,6],
+                        [0,0,3,2,0,0,0,8,0],
+                        [0,6,0,5,0,0,0,0,9],
+                        [0,0,4,0,0,0,0,3,0],
+                        [0,0,0,0,0,9,7,0,0]
+                    ],
+                    solution: [
+                        [1,4,5,3,2,7,6,9,8],
+                        [8,3,9,6,5,4,1,2,7],
+                        [6,7,2,9,1,8,5,4,3],
+                        [4,9,6,1,8,5,3,7,2],
+                        [2,1,8,4,7,3,9,5,6],
+                        [7,5,3,2,9,6,4,8,1],
+                        [3,6,7,5,4,2,8,1,9],
+                        [9,2,4,8,6,1,2,3,5],
+                        [5,8,1,7,3,9,7,6,4]
+                    ]
+                }
+            ]
+        };
+
+        // Current difficulty and puzzle state
+        let currentDifficulty = 'easy';
+        let currentPuzzleIndex = 0;
+        let puzzle = puzzlesByDifficulty.easy[0].puzzle;
+        let solution = puzzlesByDifficulty.easy[0].solution;
+        let board = puzzle.map(row => [...row]);
+        let selectedCell = null;
+
+        // Timer state
+        let timerInterval = null;
+        let elapsedSeconds = 0;
+        let gameWon = false;
+        let isPaused = true; // Start paused, user must click to start
+
+        const boardEl = document.getElementById('board');
+        const messageEl = document.getElementById('message');
+        const timerEl = document.getElementById('timer');
+        const playPauseBtn = document.getElementById('play-pause');
+        const boardOverlay = document.getElementById('board-overlay');
+
+        // Timer functions
+        function startTimer() {
+            stopTimer();
+            elapsedSeconds = 0;
+            gameWon = false;
+            isPaused = false;
+            updateTimerDisplay();
+            updatePlayPauseButton();
+            timerInterval = setInterval(() => {
+                elapsedSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function pauseTimer() {
+            stopTimer();
+            isPaused = true;
+            updatePlayPauseButton();
+            // Show overlay when paused to prevent studying the puzzle
+            showOverlay(elapsedSeconds > 0); // true if mid-game pause
+        }
+
+        function resumeTimer() {
+            if (gameWon) return;
+            isPaused = false;
+            updatePlayPauseButton();
+            // Hide the overlay when game starts
+            boardOverlay.classList.add('hidden');
+            timerInterval = setInterval(() => {
+                elapsedSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function togglePlayPause() {
+            if (gameWon) return;
+            if (isPaused) {
+                resumeTimer();
+            } else {
+                pauseTimer();
+            }
+        }
+
+        function updatePlayPauseButton() {
+            if (isPaused) {
+                playPauseBtn.textContent = 'Start';
+                playPauseBtn.classList.add('paused');
+            } else {
+                playPauseBtn.textContent = 'Pause';
+                playPauseBtn.classList.remove('paused');
+            }
+        }
+
+        function showOverlay(isPausedMidGame = false) {
+            boardOverlay.classList.remove('hidden');
+            const overlayMessage = boardOverlay.querySelector('.overlay-message');
+            if (isPausedMidGame) {
+                overlayMessage.innerHTML = 'Game Paused<span>Click Start to resume</span>';
+            } else {
+                overlayMessage.innerHTML = 'Click Start to reveal the puzzle<span>The timer will begin when you start</span>';
+            }
+        }
+
+        function hideOverlay() {
+            boardOverlay.classList.add('hidden');
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(elapsedSeconds / 60);
+            const secs = elapsedSeconds % 60;
+            timerEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            if (mins > 0) {
+                return `${mins} minute${mins > 1 ? 's' : ''} and ${secs} second${secs !== 1 ? 's' : ''}`;
+            }
+            return `${secs} second${secs !== 1 ? 's' : ''}`;
+        }
+
+        // Create the board
+        function renderBoard() {
+            boardEl.innerHTML = '';
+
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+
+                    const value = board[row][col];
+                    const isGiven = puzzle[row][col] !== 0;
+
+                    if (value !== 0) {
+                        cell.textContent = value;
+                    }
+
+                    if (isGiven) {
+                        cell.classList.add('given');
+                    } else if (value !== 0) {
+                        cell.classList.add('user-input');
+                    }
+
+                    // Check if selected
+                    if (selectedCell && selectedCell.row === row && selectedCell.col === col) {
+                        cell.classList.add('selected');
+                    }
+
+                    cell.addEventListener('click', () => selectCell(row, col));
+                    boardEl.appendChild(cell);
+                }
+            }
+        }
+
+        // Select a cell
+        function selectCell(row, col) {
+            // Can't select given cells
+            if (puzzle[row][col] !== 0) {
+                showMessage('This cell is fixed - try another one', 'info');
+                return;
+            }
+
+            selectedCell = { row, col };
+            renderBoard();
+            showMessage('Now type a number (1-9)', 'info');
+        }
+
+        // Handle keyboard input
+        document.addEventListener('keydown', (e) => {
+            // Number keys
+            if (e.key >= '1' && e.key <= '9') {
+                enterNumber(parseInt(e.key));
+                return;
+            }
+
+            // Delete/Backspace to clear
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                clearCell();
+                return;
+            }
+
+            // Arrow keys to move selection
+            if (selectedCell) {
+                const { row, col } = selectedCell;
+                if (e.key === 'ArrowUp' && row > 0) moveSelection(row - 1, col);
+                if (e.key === 'ArrowDown' && row < 8) moveSelection(row + 1, col);
+                if (e.key === 'ArrowLeft' && col > 0) moveSelection(row, col - 1);
+                if (e.key === 'ArrowRight' && col < 8) moveSelection(row, col + 1);
+            }
+        });
+
+        // Move selection (skip given cells)
+        function moveSelection(row, col) {
+            if (puzzle[row][col] === 0) {
+                selectedCell = { row, col };
+                renderBoard();
+            }
+        }
+
+        // Highlight a cell temporarily
+        function highlightCell(row, col, className) {
+            renderBoard();
+            const cells = boardEl.querySelectorAll('.cell');
+            const index = row * 9 + col;
+            cells[index].classList.add(className);
+
+            // Remove highlight after 1 second
+            setTimeout(() => {
+                cells[index].classList.remove(className);
+            }, 1000);
+        }
+
+        // Show message
+        function showMessage(text, type) {
+            messageEl.textContent = text;
+            messageEl.className = 'message ' + type;
+        }
+
+        // Enter a number in the selected cell
+        function enterNumber(num) {
+            if (!selectedCell) {
+                showMessage('Click on an empty cell first', 'info');
+                return;
+            }
+
+            const { row, col } = selectedCell;
+            board[row][col] = num;
+
+            // Check if correct
+            if (num === solution[row][col]) {
+                showMessage('Correct!', 'success');
+                highlightCell(row, col, 'correct');
+
+                // Check for completed rows, columns, or boxes
+                setTimeout(() => checkCompletions(row, col), 300);
+            } else {
+                showMessage('Wrong! Try again.', 'info');
+                highlightCell(row, col, 'wrong');
+            }
+
+            // Check if puzzle is complete
+            checkWin();
+        }
+
+        // Clear the selected cell
+        function clearCell() {
+            if (!selectedCell) {
+                showMessage('Click on an empty cell first', 'info');
+                return;
+            }
+
+            const { row, col } = selectedCell;
+            board[row][col] = 0;
+            renderBoard();
+            showMessage('Cell cleared', 'info');
+        }
+
+        // Check if a row is correctly completed
+        function isRowComplete(row) {
+            for (let col = 0; col < 9; col++) {
+                if (board[row][col] !== solution[row][col]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Check if a column is correctly completed
+        function isColComplete(col) {
+            for (let row = 0; row < 9; row++) {
+                if (board[row][col] !== solution[row][col]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Check if a 3x3 box is correctly completed
+        function isBoxComplete(boxRow, boxCol) {
+            const startRow = boxRow * 3;
+            const startCol = boxCol * 3;
+            for (let r = startRow; r < startRow + 3; r++) {
+                for (let c = startCol; c < startCol + 3; c++) {
+                    if (board[r][c] !== solution[r][c]) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // Celebrate completed cells with animation
+        function celebrateCells(cellIndices) {
+            const cells = boardEl.querySelectorAll('.cell');
+            cellIndices.forEach(index => {
+                cells[index].classList.add('celebrate');
+            });
+
+            // Remove animation class after it completes
+            setTimeout(() => {
+                cellIndices.forEach(index => {
+                    cells[index].classList.remove('celebrate');
+                });
+            }, 1500);
+        }
+
+        // Check for completed rows, columns, and boxes after a correct input
+        function checkCompletions(row, col) {
+            let celebrationMessage = [];
+            let cellsToAnimate = new Set();
+
+            // Check row
+            if (isRowComplete(row)) {
+                celebrationMessage.push('Row');
+                for (let c = 0; c < 9; c++) {
+                    cellsToAnimate.add(row * 9 + c);
+                }
+            }
+
+            // Check column
+            if (isColComplete(col)) {
+                celebrationMessage.push('Column');
+                for (let r = 0; r < 9; r++) {
+                    cellsToAnimate.add(r * 9 + col);
+                }
+            }
+
+            // Check 3x3 box
+            const boxRow = Math.floor(row / 3);
+            const boxCol = Math.floor(col / 3);
+            if (isBoxComplete(boxRow, boxCol)) {
+                celebrationMessage.push('Box');
+                const startRow = boxRow * 3;
+                const startCol = boxCol * 3;
+                for (let r = startRow; r < startRow + 3; r++) {
+                    for (let c = startCol; c < startCol + 3; c++) {
+                        cellsToAnimate.add(r * 9 + c);
+                    }
+                }
+            }
+
+            // Trigger celebration if something was completed
+            if (cellsToAnimate.size > 0) {
+                celebrateCells([...cellsToAnimate]);
+                showMessage(`${celebrationMessage.join(' + ')} complete! Great job!`, 'success');
+            }
+        }
+
+        // Check if the puzzle is complete
+        function checkWin() {
+            if (gameWon) return;
+
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (board[row][col] !== solution[row][col]) {
+                        return;
+                    }
+                }
+            }
+
+            // Puzzle solved!
+            gameWon = true;
+            stopTimer();
+            showMessage(`Congratulations! You solved it in ${formatTime(elapsedSeconds)}!`, 'success');
+            selectedCell = null;
+            renderBoard();
+        }
+
+        // Play/Pause button
+        playPauseBtn.addEventListener('click', togglePlayPause);
+
+        // Reset button - clears your progress on current puzzle
+        document.getElementById('reset').addEventListener('click', () => {
+            board = puzzle.map(row => [...row]);
+            selectedCell = null;
+            stopTimer();
+            elapsedSeconds = 0;
+            isPaused = true;
+            updateTimerDisplay();
+            updatePlayPauseButton();
+            showOverlay();
+            renderBoard();
+            showMessage('Puzzle reset! Click Start to begin.', 'info');
+        });
+
+        // New Game button - loads a different puzzle of same difficulty
+        document.getElementById('new-game').addEventListener('click', () => {
+            const puzzles = puzzlesByDifficulty[currentDifficulty];
+            currentPuzzleIndex = (currentPuzzleIndex + 1) % puzzles.length;
+            puzzle = puzzles[currentPuzzleIndex].puzzle;
+            solution = puzzles[currentPuzzleIndex].solution;
+            board = puzzle.map(row => [...row]);
+            selectedCell = null;
+            stopTimer();
+            elapsedSeconds = 0;
+            isPaused = true;
+            updateTimerDisplay();
+            updatePlayPauseButton();
+            showOverlay();
+            renderBoard();
+            showMessage(`New ${currentDifficulty} puzzle! Click Start.`, 'info');
+        });
+
+        // Difficulty selection
+        function setDifficulty(difficulty) {
+            currentDifficulty = difficulty;
+            currentPuzzleIndex = 0;
+            const puzzles = puzzlesByDifficulty[difficulty];
+            puzzle = puzzles[0].puzzle;
+            solution = puzzles[0].solution;
+            board = puzzle.map(row => [...row]);
+            selectedCell = null;
+            stopTimer();
+            elapsedSeconds = 0;
+            isPaused = true;
+            updateTimerDisplay();
+            updatePlayPauseButton();
+            showOverlay();
+            renderBoard();
+
+            // Update active button
+            document.querySelectorAll('.difficulty-buttons button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`diff-${difficulty}`).classList.add('active');
+
+            const difficultyLabels = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+            showMessage(`${difficultyLabels[difficulty]} mode! Click Start.`, 'info');
+        }
+
+        document.getElementById('diff-easy').addEventListener('click', () => setDifficulty('easy'));
+        document.getElementById('diff-medium').addEventListener('click', () => setDifficulty('medium'));
+        document.getElementById('diff-hard').addEventListener('click', () => setDifficulty('hard'));
+
+        // Number pad buttons
+        document.querySelectorAll('.number-pad button[data-num]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const num = parseInt(btn.dataset.num);
+                enterNumber(num);
+            });
+        });
+
+        // Clear button
+        document.getElementById('clear-cell').addEventListener('click', clearCell);
+
+        // Initialize (don't start timer automatically)
+        updateTimerDisplay();
+        updatePlayPauseButton();
+        renderBoard();
+    </script>
+</body>
+</html>
