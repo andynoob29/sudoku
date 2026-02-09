@@ -367,6 +367,23 @@
             color: #2e7d32;
             font-weight: 600;
         }
+
+        /* Mobile responsive - stack layout vertically */
+        @media (max-width: 600px) {
+            .game-area {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .side-panel {
+                width: 100%;
+                max-width: 460px;
+            }
+
+            .info-section {
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
