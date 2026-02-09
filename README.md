@@ -35,3 +35,20 @@ A simple, browser-based Sudoku game built with HTML, CSS, and JavaScript.
 ## License
 
 Free to use and modify.
+
+## Website Images
+
+
+<img width="1035" height="940" alt="Screenshot 2026-02-07 at 11 36 13 PM" src="https://github.com/user-attachments/assets/318b6110-bb22-427f-9b57-a209e27134ad" />
+
+
+
+
+
+<img width="1035" height="940" alt="Screenshot 2026-02-07 at 11 35 58 PM" src="https://github.com/user-attachments/assets/6cf0a3fd-23ed-4bfc-829f-338cc56f48a4" />
+
+
+
+
+
+
